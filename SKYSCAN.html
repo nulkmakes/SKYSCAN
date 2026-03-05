@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sky Scan | Indiana Weather Radar</title>
+
+<style>
+body{
+    margin:0;
+    font-family:Arial,Helvetica,sans-serif;
+    background:#0b0f1a;
+    color:white;
+}
+
+header{
+    background:#101a30;
+    padding:10px;
+    text-align:center;
+    font-size:28px;
+    letter-spacing:2px;
+}
+
+#ticker{
+    background:#0e213f;
+    overflow:hidden;
+    white-space:nowrap;
+    border-bottom:2px solid #3da6ff;
+}
+
+#ticker span{
+    display:inline-block;
+    padding:8px 40px;
+    animation:scroll 40s linear infinite;
+}
+
+@keyframes scroll{
+    from{transform:translateX(100%)}
+    to{transform:translateX(-100%)}
+}
+
+#cityTabs{
+    display:flex;
+    flex-wrap:wrap;
+    background:#0a1426;
+    padding:5px;
+}
+
+.cityBtn{
+    background:#16294d;
+    border:none;
+    margin:3px;
+    padding:6px 10px;
+    color:white;
+    cursor:pointer;
+    border-radius:4px;
+    font-size:12px;
+}
+
+.cityBtn:hover{
+    background:#3da6ff;
+}
+
+#main{
+    display:flex;
+}
+
+#radar{
+    flex:2;
+}
+
+#info{
+    flex:1;
+    padding:15px;
+    background:#0f1b33;
+}
+
+#alerts{
+    background:#300;
+    padding:10px;
+    margin-bottom:10px;
+}
+
+#lightning{
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    pointer-events:none;
+}
+
+.flash{
+    animation:flash 0.2s;
+}
+
+@keyframes flash{
+    from{background:white;opacity:.7}
+    to{background:transparent}
+}
+</style>
+</head>
+
+<body>
+
+<header>🌩️ SKY SCAN — INDIANA WEATHER</header>
+
+<div id="ticker"><span id="weatherBar">Loading Indiana weather...</span></div>
+
+<div id="cityTabs"></div>
+
+<div id="main">
+
+<div id="radar">
+<iframe
+width="100%"
+height="600"
+src="https://embed.windy.com/embed2.html?lat=39.8&lon=-86.1&zoom=7&level=surface&overlay=radar"
+frameborder="0"></iframe>
+</div>
+
+<div id="info">
+
+<div id="alerts">
+<b>Active Warnings</b>
+<div id="alertList">Loading alerts...</div>
+</div>
+
+<h2 id="cityName">Select a City</h2>
+<div id="cityWeather"></div>
+
+</div>
+
+</div>
+
+<div id="lightning"></div>
+
+<script>
+
+const cities = [
+"Alexandria","Anderson","Angola","Auburn","Avon","Batesville","Bedford",
+"Beech Grove","Bloomington","Bluffton","Boonville","Brazil","Bright",
+"Brownsburg","Carmel","Cedar Lake","Charlestown","Chesterton","Clarksville",
+"Columbia City","Columbus","Connersville","Crawfordsville","Crown Point",
+"Cumberland","Danville","Decatur","Dunlap","Dyer","East Chicago","Elkhart",
+"Ellettsville","Elwood","Evansville","Fishers","Fort Wayne","Frankfort",
+"Franklin","Garrett","Gary","Gas City","Goshen","Granger","Greencastle",
+"Greenfield","Greensburg","Greenwood","Griffith","Grissom AFB","Hammond",
+"Hartford City","Hidden Valley","Highland","Hobart","Huntingburg","Huntington",
+"Indianapolis","Jasper","Jeffersonville","Kendallville","Kokomo","La Porte",
+"Lafayette","Lake Station","Lakes of the Four Seasons","Lawrence","Lawrenceburg",
+"Lebanon","Linton","Logansport","Lowell","Madison","Marion","Martinsville",
+"Merrillville","Michigan City","Mishawaka","Monticello","Mooresville",
+"Mount Vernon","Muncie","Munster","Nappanee","New Albany","New Castle",
+"New Haven","New Whiteland","Noblesville","North Manchester","North Vernon",
+"Notre Dame","Peru","Plainfield","Plymouth","Portage","Portland","Princeton",
+"Purdue University","Rensselaer","Richmond","Rochester","Rushville","Salem",
+"Schererville","Scottsburg","Sellersburg","Seymour","Shelbyville","South Bend",
+"South Haven","Speedway","St. John","Tell City","Terre Haute","Tipton",
+"Valparaiso","Vincennes","Wabash","Warsaw","Washington","West Lafayette",
+"Westfield","Westville","Yorktown","Zionsville"
+];
+
+const tabContainer=document.getElementById("cityTabs");
+
+cities.forEach(city=>{
+let btn=document.createElement("button");
+btn.className="cityBtn";
+btn.innerText=city;
+btn.onclick=()=>loadWeather(city);
+tabContainer.appendChild(btn);
+});
+
+async function loadWeather(city){
+
+document.getElementById("cityName").innerText=city;
+
+let geo=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1`);
+let g=await geo.json();
+
+if(!g.results)return;
+
+let lat=g.results[0].latitude;
+let lon=g.results[0].longitude;
+
+let weather=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+let data=await weather.json();
+
+document.getElementById("cityWeather").innerHTML=
+`Temp: ${data.current_weather.temperature}°C<br>
+Wind: ${data.current_weather.windspeed} km/h`;
+}
+
+async function loadAlerts(){
+
+let res=await fetch("https://api.weather.gov/alerts/active?area=IN");
+let data=await res.json();
+
+let html="";
+
+data.features.forEach(alert=>{
+html+=`⚠️ ${alert.properties.headline}<br>`;
+});
+
+document.getElementById("alertList").innerHTML=html;
+}
+
+loadAlerts();
+
+function lightning(){
+document.getElementById("lightning").classList.add("flash");
+setTimeout(()=>document.getElementById("lightning").classList.remove("flash"),200);
+}
+
+setInterval(()=>{
+if(Math.random()>.7)lightning();
+},5000);
+
+</script>
+
+</body>
+</html>
